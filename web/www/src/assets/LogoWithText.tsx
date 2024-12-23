@@ -23,7 +23,7 @@ export default function LogoWithText({
     >
       <g
         transform="translate(0.000000,1836.000000) scale(0.100000,-0.100000)"
-         className="fill-black dark:fill-white"
+        className="fill-black dark:fill-white"
         stroke="none"
       >
         <path
