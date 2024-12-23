@@ -1,9 +1,9 @@
 "use client";
 import clsx from "clsx";
-import { Link } from "react-router";
 import { useState } from "react";
+import { Link } from "react-router";
+import { useClickAway } from "react-use";
 import { ConnectKitButton } from "connectkit";
-import { useClickAway, useMedia } from "react-use";
 import { useFloating } from "@floating-ui/react";
 import {
   MdBook,
@@ -13,7 +13,6 @@ import {
   MdCategory,
 } from "react-icons/md";
 
-import Logo from "../../assets/logo";
 import CreateButton from "../create/Button";
 import LogoWithText from "../../assets/LogoWithText";
 
