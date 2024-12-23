@@ -13,12 +13,14 @@ import {
   MdCategory,
 } from "react-icons/md";
 
+import Logo from "../../assets/logo";
 import CreateButton from "../create/Button";
+import LogoWithText from "../../assets/LogoWithText";
 
 const navigations = [
-  // { name: "Tokens", path: "/", icon: MdCategory },
-  // { name: "Trade", path: "/", icon: MdBubbleChart },
-  // { name: "Support", path: "/", icon: MdQuestionMark },
+  { name: "Tokens", path: "/", icon: MdCategory },
+  { name: "Trade", path: "/", icon: MdBubbleChart },
+  { name: "Support", path: "/", icon: MdQuestionMark },
   { name: "Docs", path: "/", icon: MdBook },
 ];
 
@@ -26,19 +28,16 @@ export default function Header() {
   const { refs } = useFloating();
   const [isNavOpen, setIsNavOpen] = useState(false);
 
-  const isDarkMode = useMedia("(prefers-color-scheme: dark)", false);
   useClickAway(refs.floating, () => setIsNavOpen(false));
 
   return (
     <div className="sticky top-0 inset-x-0 z-10 bg-white dark:bg-dark-900">
       <header className="relative flex space-x-4 shadow lt-md:pr-2 md:px-4">
         <Link to="/">
-          <img
-            src={isDarkMode ? "/logo.jpg" : "/logo.jpg"}
-            alt="TrustMint"
-            width={128}
-            height={128}
-            className="object-cover"
+          <LogoWithText
+            width={64}
+            height={64}
+            className="w-32 h-16"
           />
         </Link>
         <div className="flex-1 flex items-center">
