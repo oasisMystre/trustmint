@@ -25,4 +25,3 @@ dist
 next-env.d.ts
 keep.js
 .graphclient
-public/charting_library

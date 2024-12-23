@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite --port=3000",
     "generate": "graphclient build",
-    "build": "cp -r packages/chart/charting_library public && tsc -b && vite build",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
