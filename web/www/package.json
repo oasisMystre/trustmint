@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite --port=3000",
     "generate": "graphclient build",
-    "build": "tsc -b && vite build",
+    "build": "graphclient build && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
