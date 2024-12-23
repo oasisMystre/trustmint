@@ -1,0 +1,35 @@
+query Tokens($filter: Token_filter, $orderBy: Token_orderBy) {
+  tokens(where: $filter, orderBy: $orderBy, orderDirection: desc) {
+    createdAt
+    tokensSold
+    description
+    image
+    balance
+    lastTrade
+    name
+    price
+    socialTelegram
+    socialWebsite
+    socialX
+    supply
+    ticker
+    tokenAddress
+  }
+}
+
+query TokensTransactions(
+  $filter: TokensTransaction_filter
+  $orderBy: TokensTransaction_orderBy
+) {
+  tokensTransactions(where: $filter, orderBy: $orderBy) {
+    id
+    sender
+    tokenAddress
+    transactionType
+    tokensAmount
+    value
+    blockNumber
+    blockTimestamp
+    transactionHash
+  }
+}

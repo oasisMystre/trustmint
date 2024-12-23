@@ -1,0 +1,28 @@
+# Hardhat files
+cache
+artifacts
+
+# TypeChain files
+typechain
+typechain-types
+
+# solidity-coverage files
+coverage
+coverage.json
+
+# project files
+.turbo
+node_modules
+.env
+keep.js
+.graphclient 
+
+.turbo
+node_modules
+dist 
+.next 
+.env*
+next-env.d.ts
+keep.js
+.graphclient
+public/charting_library

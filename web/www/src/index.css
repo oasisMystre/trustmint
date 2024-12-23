@@ -1,0 +1,53 @@
+@unocss preflights;
+@unocss default;
+
+@unocss;
+
+*,
+*:hover,
+*:focus {
+  outline: none;
+}
+
+
+.font-mono {
+  @apply !font-[var(--font-mono)];
+}
+
+th,
+td {
+  @apply font-normal p-2;
+}
+
+tr {
+  @apply border-y dark:border-dark-50;
+}
+
+tbody {
+  @apply divide-y dark:divide-dark-50;
+}
+
+th {
+  @apply text-start text-nowrap;
+}
+
+
+tbody tr {
+  @apply cursor-pointer;
+}
+
+tbody tr:hover {
+  @apply bg-black/5 dark:bg-dark;
+}
+
+thead th {
+  @apply ;
+}
+
+*::-webkit-inner-spin-button,
+*::-webkit-outer-spin-button {
+  -webkit-appearance: none!important;
+  -moz-appearance: textfield!important;
+  appearance: none!important;
+  margin: 0;
+}

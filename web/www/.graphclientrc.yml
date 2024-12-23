@@ -1,0 +1,8 @@
+sources:
+  - name: trustmintV1
+    handler:
+      graphql:
+        endpoint: https://api.studio.thegraph.com/query/97422/pf---basesepolia/version/latest
+
+documents:
+  - ./src/graphql/token.graphql

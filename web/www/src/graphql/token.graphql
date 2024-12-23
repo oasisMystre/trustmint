@@ -1,0 +1,53 @@
+query Tokens(
+  $where: Token_filter
+  $orderBy: Token_orderBy
+  $first: Int
+  $skip: Int
+) {
+  tokens(
+    where: $where
+    orderBy: $orderBy
+    orderDirection: desc
+    first: $first
+    skip: $skip
+  ) {
+    createdAt
+    tokensSold
+    description
+    image
+    balance
+    lastTrade
+    name
+    price
+    socialTelegram
+    socialWebsite
+    socialX
+    supply
+    ticker
+    tokenAddress
+  }
+}
+
+query TokensTransactions(
+  $where: TokensTransaction_filter
+  $orderBy: TokensTransaction_orderBy
+  $first: Int
+  $skip: Int
+) {
+  tokensTransactions(
+    where: $where
+    orderBy: $orderBy
+    first: $first
+    skip: $skip
+  ) {
+    id
+    sender
+    tokenAddress
+    transactionType
+    tokensAmount
+    value
+    blockNumber
+    blockTimestamp
+    transactionHash
+  }
+}

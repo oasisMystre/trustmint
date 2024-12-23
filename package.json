@@ -1,0 +1,14 @@
+{
+  "name": "trustmint",
+  "private": true,
+  "packageManager": "yarn@1.22.22",
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "hardhat": "^2.22.17"
+  },
+  "workspaces": [
+    "contracts/**",
+    "web/**",
+    "packages/**"
+  ]
+}
