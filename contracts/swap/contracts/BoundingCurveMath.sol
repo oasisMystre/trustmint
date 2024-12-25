@@ -1,15 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
+
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "./Power.sol";
-
-struct Ratio {
-  uint8 x;
-  uint8 y;
-}
-
-import "hardhat/console.sol";
 
 abstract contract BoundingCurveMath is Power {
   using Math for uint256;

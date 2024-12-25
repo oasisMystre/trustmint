@@ -2,19 +2,22 @@
 pragma solidity ^0.8.27;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@pythnetwork/pyth-sdk-solidity/PythUtils.sol";
 
 import "./Mint.sol";
-import "./Delegate.sol";
 import "./BoundingCurve.sol";
+import "./TokenGovernance.sol";
 
-contract Xono is Mint, Delegate, DelegateConstraint {
+contract Xono is Mint, TokenGovernance, DelegateConstraint {
+  using Math for uint256;
+
   uint8 immutable version = 1.0;
 
-  uint8 public MINIMUM_VOTE = 1;
-  uint64 public MAX_VOTE_PER_ADDRESS = 100000000000000000;
-  uint256 public CONSTRIANT_AMOUNT_TRIGGER = 1000000000000000000;
-  uint256 public CONSTRIANT_DELEGATE_COUNT_TRIGGER =
-    CONSTRIANT_AMOUNT_TRIGGER / MAX_VOTE_PER_ADDRESS;
+  uint8 public maximumVote = 1;
+  uint64 public maxVotePerAddress = 10e16;
+  uint256 public constraintAmountTrigger = 10e18;
+  uint256 public constraintDelegateCountTrigger =
+    constraintAmountTrigger.ceilDiv(maxVotePerAddress);
 
   struct Vote {
     uint256 totalDelegatedAmount;
@@ -26,8 +29,13 @@ contract Xono is Mint, Delegate, DelegateConstraint {
 
   constructor() Mint("Wrapped ETH", "WETH", true) {}
 
-  function createMint(string memory name, string memory symbol) external {
-    Mint mint = new BoundingCurve(name, symbol, 100, address(this));
+  function createMint(
+    string memory name,
+    string memory symbol,
+    address pyth
+  ) external {
+    Mint mint = new BoundingCurve(name, symbol, 100, address(this), pyth);
+
     Constraint[] memory constraint = new Constraint[](1);
     constraint[0] = Constraint(true, 0, address(this));
 
@@ -47,7 +55,7 @@ contract Xono is Mint, Delegate, DelegateConstraint {
       "function can't be called outside of contract"
     );
 
-    return delegateAmount >= MINIMUM_VOTE && balance <= MAX_VOTE_PER_ADDRESS;
+    return delegateAmount >= maximumVote && balance <= maxVotePerAddress;
   }
 
   function voteConstraintReached(
@@ -63,8 +71,8 @@ contract Xono is Mint, Delegate, DelegateConstraint {
     );
 
     contraintReached =
-      delegateCount >= CONSTRIANT_DELEGATE_COUNT_TRIGGER ||
-      totalDelegatedAmount >= CONSTRIANT_AMOUNT_TRIGGER;
+      delegateCount >= constraintDelegateCountTrigger ||
+      totalDelegatedAmount >= constraintAmountTrigger;
 
     if (contraintReached) {
       BoundingCurve curve = BoundingCurve(asset);

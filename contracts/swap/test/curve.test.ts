@@ -21,10 +21,14 @@ describe("TrustMint curve test", () => {
       to: xono.address,
       from: account,
       data: null,
-      value: await xono.read.CONSTRIANT_AMOUNT_TRIGGER(),
+      value: await xono.read.constraintAmountTrigger(),
     });
 
-    let hash = await xono.write.createMint(["Test", "Tst"]);
+    let hash = await xono.write.createMint([
+      "Test",
+      "Tst",
+      "0xDd24F84d36BF92C65F92307595335bdFab5Bbd21",
+    ]);
 
     let reciept = await client.waitForTransactionReceipt({ hash });
     const [
@@ -39,7 +43,7 @@ describe("TrustMint curve test", () => {
 
     hash = await xono.write.vote([
       mint,
-      await xono.read.CONSTRIANT_AMOUNT_TRIGGER(),
+      await xono.read.constraintAmountTrigger(),
     ]);
 
     reciept = await client.waitForTransactionReceipt({ hash });
@@ -55,14 +59,28 @@ describe("TrustMint curve test", () => {
     let balance = await xono.read.balanceOf([account]);
     let amountIn = balance / 3n;
 
-    let amountOut = await token.read.calculateTokenBReturn([amountIn]);
+    let [, amountOut] = await token.read.calculateTokenAToTokenBReturn([
+      amountIn,
+    ]);
     let hash = await xono.write.approve([token.address, amountIn]);
     await client.waitForTransactionReceipt({ hash });
-    await token.write.swap([amountIn, amountOut, 3, 0]);
+    await token.write.swap([
+      amountIn,
+      amountOut,
+      3,
+      0,
+      "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
+    ]);
     console.log(amountOut);
-    amountIn = await token.read.calculateTokenAReturn([amountOut]);
+    [, amountIn] = await token.read.calculateTokenBToTokenAReturn([amountOut]);
     await client.waitForTransactionReceipt({ hash });
-    await token.write.swap([amountOut, amountIn, 3, 1]);
+    await token.write.swap([
+      amountOut,
+      amountIn,
+      3,
+      1,
+      "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
+    ]);
     console.log(amountIn);
   });
 });

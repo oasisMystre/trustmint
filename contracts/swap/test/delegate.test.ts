@@ -42,7 +42,7 @@ describe("TrustMint delegate test", () => {
 
   it("wrap some eth to xono contract", async () => {
     const [xono] = await loadFixture(deployXonoContract);
-    const amount = await xono.read.CONSTRIANT_AMOUNT_TRIGGER();
+    const amount = await xono.read.constraintAmountTrigger();
     const [signer] = await hre.ethers.getSigners();
     await signer.sendTransaction({
       to: xono.address,
@@ -72,7 +72,7 @@ describe("TrustMint delegate test", () => {
 
     hash = await xono.write.vote([
       mint,
-      await xono.read.CONSTRIANT_AMOUNT_TRIGGER(),
+      await xono.read.constraintAmountTrigger(),
     ]);
 
     reciept = await client.waitForTransactionReceipt({ hash });

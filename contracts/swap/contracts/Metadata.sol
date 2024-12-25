@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import "./interfaces/IMetadata.sol";
 
-import "hardhat/console.sol";
 
 contract Metadata is IMetadata {
   address private mAuthority;
