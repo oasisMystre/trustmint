@@ -57,7 +57,13 @@ describe("TrustMint delegate test", () => {
 
   it("vote with maximum vote and trigger vote constraint", async () => {
     const [xono] = await loadFixture(deployXonoContract);
-    let hash = await xono.write.createMint(["Test", "Tst"]);
+    let hash = await xono.write.createMint([
+      "Test",
+      "Tst",
+      "0xDd24F84d36BF92C65F92307595335bdFab5Bbd21",
+      "0x0227628f3F023bb0B980b67D528571c95c6DaC1c",
+      "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
+    ]);
 
     let reciept = await client.waitForTransactionReceipt({ hash });
     const [
@@ -80,7 +86,7 @@ describe("TrustMint delegate test", () => {
     const events = parseEventLogs({
       logs: reciept.logs,
       abi: xono.abi,
-      eventName: "VoteConstraintReached"
+      eventName: "VoteConstraintReached",
     });
 
     expect(events.length).to.greaterThan(0);

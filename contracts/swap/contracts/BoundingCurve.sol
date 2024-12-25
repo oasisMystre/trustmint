@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 import "./Mint.sol";
 import "./BoundingCurveMath.sol";
@@ -12,16 +13,14 @@ import "./libraries/TradeDirection.sol";
 import "hardhat/console.sol";
 
 contract BoundingCurve is Mint, BoundingCurveMath {
-  struct Pool {
-    address token;
-    uint256 virtualReserve;
-  }
-
   struct Pair {
-    Pool tokenA;
-    Pool tokenB;
     bool trading;
+    IERC20 baseToken;
+    IERC20 quoteToken;
     uint32 reserveRatio;
+    uint256 baseTokenVirtualReserve;
+    uint256 quoteTokenVirtualReserve;
+    bytes32 baseTokenUSDPriceFeedId;
   }
 
   Pair public pair;
@@ -29,6 +28,7 @@ contract BoundingCurve is Mint, BoundingCurveMath {
   uint256 public maximumTokenMarketCap = 10000;
 
   IPyth pyth;
+  IUniswapV3Factory uniswapV3Factory;
 
   event MintEvent(address indexed to);
   event BurnEvent(address indexed from);
@@ -38,23 +38,29 @@ contract BoundingCurve is Mint, BoundingCurveMath {
   constructor(
     string memory Name,
     string memory Symbol,
+    address baseToken,
     uint32 reserveRatio,
-    address token0,
-    address pythContract
+    address pythContract,
+    address uniswapFactoryContract,
+    bytes32 baseTokenUSDPriceFeedId
   ) Mint(Name, Symbol, false) {
     pyth = IPyth(pythContract);
+    uniswapV3Factory = IUniswapV3Factory(uniswapFactoryContract);
 
     uint256 scale = 10 ** decimals();
     uint256 reserveBalance = 1 * scale;
 
     pair = Pair(
-      Pool(token0, 0),
-      Pool(address(this), reserveBalance),
       false,
-      reserveRatio
+      IERC20(baseToken),
+      IERC20(address(this)),
+      reserveRatio,
+      0,
+      reserveBalance,
+      baseTokenUSDPriceFeedId
     );
 
-    _mint(msg.sender, 1 * scale);
+    _mint(msg.sender, reserveBalance);
   }
 
   function setTrading(bool trading) public {
@@ -62,12 +68,12 @@ contract BoundingCurve is Mint, BoundingCurveMath {
     pair.trading = trading;
   }
 
-  function calculateTokenBToTokenAReturn(
+  function calculateBaseTokenReturn(
     uint256 amount
   ) external view returns (uint256, uint256) {
     uint saleReturn = calculateSaleReturn(
       totalSupply(),
-      pair.tokenB.virtualReserve,
+      pair.quoteTokenVirtualReserve,
       pair.reserveRatio,
       amount
     );
@@ -77,12 +83,12 @@ contract BoundingCurve is Mint, BoundingCurveMath {
     return (fee, saleReturn - fee);
   }
 
-  function calculateTokenAToTokenBReturn(
+  function calculateQuoteTokenReturn(
     uint256 amount
   ) external view returns (uint256, uint256) {
     uint256 purchaseReturn = calculatePurchaseReturn(
       totalSupply(),
-      pair.tokenB.virtualReserve,
+      pair.quoteTokenVirtualReserve,
       pair.reserveRatio,
       amount
     );
@@ -92,18 +98,17 @@ contract BoundingCurve is Mint, BoundingCurveMath {
   }
 
   function mint(uint256 amount) internal returns (uint256) {
-    Mint tokenA = Mint(pair.tokenA.token);
-    (uint256 fee, uint256 imburseAmount) = this.calculateTokenAToTokenBReturn(
+    (uint256 fee, uint256 imburseAmount) = this.calculateQuoteTokenReturn(
       amount
     );
 
-    pair.tokenA.virtualReserve += amount;
-    pair.tokenB.virtualReserve += imburseAmount;
+    pair.baseTokenVirtualReserve += amount;
+    pair.quoteTokenVirtualReserve += imburseAmount;
 
     _mint(address(this), fee);
     _mint(msg.sender, imburseAmount);
 
-    tokenA.transferFrom(msg.sender, address(this), amount);
+    pair.baseToken.transferFrom(msg.sender, address(this), amount);
 
     emit MintEvent(msg.sender);
 
@@ -111,15 +116,14 @@ contract BoundingCurve is Mint, BoundingCurveMath {
   }
 
   function burn(uint256 amount) internal returns (uint256) {
-    Mint tokenA = Mint(pair.tokenA.token);
-    (, uint256 reimburseAmount) = this.calculateTokenBToTokenAReturn(amount);
-    pair.tokenA.virtualReserve -= amount;
-    pair.tokenB.virtualReserve -= reimburseAmount;
+    (, uint256 reimburseAmount) = this.calculateBaseTokenReturn(amount);
+    pair.baseTokenVirtualReserve -= amount;
+    pair.quoteTokenVirtualReserve -= reimburseAmount;
 
     approve(authority, reimburseAmount);
 
     _burn(msg.sender, amount);
-    tokenA.transfer(msg.sender, reimburseAmount);
+    pair.baseToken.transfer(msg.sender, reimburseAmount);
 
     emit BurnEvent(msg.sender);
 
@@ -130,8 +134,7 @@ contract BoundingCurve is Mint, BoundingCurveMath {
     uint256 amountIn,
     uint256 amountOut,
     uint8 slippagePercentage,
-    TradeDirection.Direction direction,
-    bytes32 tokenAUSDPriceFeedId
+    TradeDirection.Direction direction
   ) external {
     require(pair.trading, "This pair is not trading yet");
     require(amountIn > 0, "Invalid amountIn");
@@ -152,16 +155,16 @@ contract BoundingCurve is Mint, BoundingCurveMath {
     if (amountOut > amountIn && slippage > tolerance)
       revert SlippageError(slippage, tolerance);
 
-    /// CHECK if coin can be migrated here
-    PythStructs.Price memory price = pyth.getPriceNoOlderThan(
-      tokenAUSDPriceFeedId,
-      60
-    );
-    uint256 tokenAPrice = convertToUint(price.price, price.expo, 18); // todo 
-    uint256 boundingCurveValue = pair.tokenA.virtualReserve * tokenAPrice;
-    if (boundingCurveValue >= maximumTokenMarketCap) {
-      console.log("Migrated");
-    }
+    // /// CHECK if coin can be migrated here
+    // PythStructs.Price memory price = pyth.getPriceNoOlderThan(
+    //   pair.baseTokenUSDPriceFeedId,
+    //   60
+    // );
+    // uint256 tokenAPrice = convertToUint(price.price, price.expo, 18);
+    // uint256 boundingCurveValue = pair.baseTokenVirtualReserve * tokenAPrice;
+    // if (boundingCurveValue >= maximumTokenMarketCap) {
+    //   console.log("Migrated");
+    // }
   }
 
   function convertToUint(
@@ -169,9 +172,7 @@ contract BoundingCurve is Mint, BoundingCurveMath {
     int32 expo,
     uint8 targetDecimals
   ) public pure returns (uint256) {
-    if (price < 0 || expo > 0 || expo < -255) {
-      revert();
-    }
+    if (price < 0 || expo > 0 || expo < -255) revert();
 
     uint8 priceDecimals = uint8(uint32(-1 * expo));
 

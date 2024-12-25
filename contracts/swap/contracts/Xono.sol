@@ -32,9 +32,19 @@ contract Xono is Mint, TokenGovernance, DelegateConstraint {
   function createMint(
     string memory name,
     string memory symbol,
-    address pyth
+    address pyth,
+    address uniswapV3Factory,
+    bytes32 baseTokenUSDPriceFeedId
   ) external {
-    Mint mint = new BoundingCurve(name, symbol, 100, address(this), pyth);
+    Mint mint = new BoundingCurve(
+      name,
+      symbol,
+      address(this),
+      100,
+      pyth,
+      uniswapV3Factory,
+      baseTokenUSDPriceFeedId
+    );
 
     Constraint[] memory constraint = new Constraint[](1);
     constraint[0] = Constraint(true, 0, address(this));
