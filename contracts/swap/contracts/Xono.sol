@@ -1,67 +1,78 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "./Pool.sol";
-import "./NativeMint.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "hardhat/console.sol";
+import "./Mint.sol";
+import "./Delegate.sol";
+import "./BoundingCurve.sol";
 
-contract Xono is NativeMint {
-  string public version;
+contract Xono is Mint, Delegate, DelegateConstraint {
+  uint8 immutable version = 1.0;
 
-  address[] private pools;
-  address[] private mints;
+  uint8 public MINIMUM_VOTE = 1;
+  uint64 public MAX_VOTE_PER_ADDRESS = 100000000000000000;
+  uint256 public CONSTRIANT_AMOUNT_TRIGGER = 1000000000000000000;
+  uint256 public CONSTRIANT_DELEGATE_COUNT_TRIGGER =
+    CONSTRIANT_AMOUNT_TRIGGER / MAX_VOTE_PER_ADDRESS;
 
-
-  constructor(
-    string memory _version,
-    string memory _name,
-    string memory _symbol,
-    string memory _uri,
-    uint256 _minimumVoteCount,
-    uint256 _minimumTotalDelegateAmount
-  )
-    NativeMint(
-      _name,
-      _symbol,
-      _uri,
-      _minimumVoteCount,
-      _minimumTotalDelegateAmount
-    )
-  {
-    version = _version;
+  struct Vote {
+    uint256 totalDelegatedAmount;
+    mapping(address => uint256) balances;
+    address[] constraints;
   }
 
-  event MintCreated(address indexed mint);
-  event PoolCreated(
-    address indexed pool,
-    address indexed tokenA,
-    address indexed tokenB
-  );
+  event MintCreated(address indexed mint, address indexed creator);
 
-  function createMint(
-    string memory name,
-    string memory symbol,
-    string memory uri
-  ) external {
-    Mint mint = new Mint(name, symbol, uri, false);
-    mints.push(address(mint));
+  constructor() Mint("Wrapped ETH", "WETH", true) {}
 
-    emit MintCreated(address(mint));
+  function createMint(string memory name, string memory symbol) external {
+    Mint mint = new BoundingCurve(name, symbol, 100, address(this));
+    Constraint[] memory constraint = new Constraint[](1);
+    constraint[0] = Constraint(true, 0, address(this));
+
+    createPoll(address(mint), constraint);
+
+    emit MintCreated(address(mint), msg.sender);
   }
 
-  function voteConstraintReached(address payable asset) public override {
-    Mint tokenAMint = Mint(asset);
-    address tokenA = address(this);
-    address tokenB = address(tokenAMint);
+  function canVote(
+    address,
+    uint256 delegateAmount,
+    uint256 balance,
+    uint256
+  ) external virtual override returns (bool) {
+    require(
+      msg.sender == address(this),
+      "function can't be called outside of contract"
+    );
 
-    Pool pool = new Pool(address(this), asset);
+    return delegateAmount >= MINIMUM_VOTE && balance <= MAX_VOTE_PER_ADDRESS;
+  }
 
-    // uint256 tokenBAmount = tokenAMint.balanceOf(address(this));
-    // tokenAMint.approve(address(pool), tokenBAmount);
-    // pool.addTokenBToReserveB(tokenBAmount);
+  function voteConstraintReached(
+    address asset,
+    uint256 totalDelegatedAmount,
+    uint delegateCount,
+    uint triggerCount
+  ) external virtual override returns (bool contraintReached) {
+    require(triggerCount == 0, "trigger can only be called once");
+    require(
+      msg.sender == address(this),
+      "function can't be called outside of contract"
+    );
 
-    pools.push(address(pool));
-    emit PoolCreated(address(pool), tokenA, tokenB);
+    contraintReached =
+      delegateCount >= CONSTRIANT_DELEGATE_COUNT_TRIGGER ||
+      totalDelegatedAmount >= CONSTRIANT_AMOUNT_TRIGGER;
+
+    if (contraintReached) {
+      BoundingCurve curve = BoundingCurve(asset);
+      curve.setTrading(true);
+    }
+  }
+
+  receive() external payable {
+    if (wrapped) _mint(msg.sender, msg.value);
   }
 }

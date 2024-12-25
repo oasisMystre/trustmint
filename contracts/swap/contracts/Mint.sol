@@ -1,50 +1,40 @@
 // SPDX-License-Identifier: MIT
-
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import "./Asset.sol";
+import "hardhat/console.sol";
 
-contract Mint is ERC20, Asset {
-  string public uri;
-  bool public wrapped;
+contract Mint is ERC20 {
+  bool public immutable wrapped;
+  address public immutable authority;
 
   constructor(
-    string memory _name,
-    string memory _symbol,
-    string memory _uri,
-    bool _wrapped
-  ) ERC20(_name, _symbol) {
-    uri = _uri;
-    wrapped = _wrapped;
+    string memory Name,
+    string memory Symbol,
+    bool Wrapped
+  ) ERC20(Name, Symbol) {
+    wrapped = Wrapped;
+    authority = msg.sender;
+  }
 
+  function _update(
+    address from,
+    address to,
+    uint256 value
+  ) internal virtual override {
     if (wrapped) {
-      listed = true;
-      trading = true;
-    } else _mint(authority, type(uint96).max);
+      super._update(from, to, value);
+      if (from == address(0)) payable(to).transfer(value);
+
+      return;
+    }
+
+    super._update(from, to, value);
   }
 
-  function wrap() external payable {
-    require(wrapped, "mint is not wrapped");
-
-    uint256 amount = msg.value;
-
-    _mint(authority, amount);
-    _transfer(authority, msg.sender, amount);
-  }
-
-  function unwrap(uint256 amount) external {
-    require(wrapped, "mint is not wrapped");
-    require(amount > 0, "cannot unwrap zero tokens");
-
-    _burn(msg.sender, amount);
-
-    payable(msg.sender).transfer(amount);
-  }
-
-  receive() external payable {
-    require(wrapped, "cannot accept native token when not wrapped");
-    this.wrap();
+  function burn(address owner, uint256 amount) external {
+    require(msg.sender == authority, "invalid authority");
+    _burn(owner, amount);
   }
 }
