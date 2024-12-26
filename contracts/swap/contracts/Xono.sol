@@ -7,6 +7,7 @@ import "@pythnetwork/pyth-sdk-solidity/PythUtils.sol";
 import "./Mint.sol";
 import "./BoundingCurve.sol";
 import "./TokenGovernance.sol";
+import "./interfaces/IBoundingCurve.sol";
 
 contract Xono is Mint, TokenGovernance, DelegateConstraint {
   using Math for uint256;
@@ -29,21 +30,17 @@ contract Xono is Mint, TokenGovernance, DelegateConstraint {
 
   constructor() Mint("Wrapped ETH", "WETH", true) {}
 
-  function createMint(
+  function createBoundingCurve(
     string memory name,
     string memory symbol,
-    address pyth,
-    address uniswapV3Factory,
-    bytes32 baseTokenUSDPriceFeedId
+    address uniswapV3Factory
   ) external {
     Mint mint = new BoundingCurve(
       name,
       symbol,
       address(this),
       100,
-      pyth,
-      uniswapV3Factory,
-      baseTokenUSDPriceFeedId
+      uniswapV3Factory
     );
 
     Constraint[] memory constraint = new Constraint[](1);
@@ -92,5 +89,33 @@ contract Xono is Mint, TokenGovernance, DelegateConstraint {
 
   receive() external payable {
     if (wrapped) _mint(msg.sender, msg.value);
+  }
+
+  function updateGovernanceParameters(
+    uint8 _maximumVote,
+    uint64 _maxVotePerAddress,
+    uint256 _constraintAmountTrigger
+  ) external {
+    require(msg.sender == authority, "Invalid contract authority");
+    maximumVote = _maximumVote;
+    maxVotePerAddress = _maxVotePerAddress;
+    constraintAmountTrigger = _constraintAmountTrigger;
+    constraintDelegateCountTrigger = _constraintAmountTrigger.ceilDiv(
+      _maxVotePerAddress
+    );
+  }
+
+  function collectFee() external {
+    require(msg.sender == authority, "Invalid contract authority");
+    payable(authority).transfer(address(this).balance);
+  }
+
+  function updateTradingFeePercentage(
+    address boundingCurve,
+    uint8 tradingFeePercentage
+  ) external {
+    require(msg.sender == authority, "Invalid contract authority");
+    IBoundingCurve curve = IBoundingCurve(boundingCurve);
+    curve.setTradingFeePercentage(tradingFeePercentage);
   }
 }
